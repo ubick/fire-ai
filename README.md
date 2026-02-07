@@ -54,10 +54,14 @@ This will load sample data (`csv/sample.csv`) and run in **Shadow Mode**, showin
    - *Note: `config/user_rules.json` is gitignored to protect your personal financial logic.*
 
 #### Spreadsheet Config
-1. Open `src/config.py` and update:
-   - `SPREADSHEET_ID`: Your Google Sheet ID.
-   - `SHEET_NAME`: The tab name to update.
-   - `SHEET_COLUMNS`: The list of category columns (in order) that match your sheet structure.
+1. Copy the example configuration:
+   ```bash
+   cp config/sheet_config.example.json config/sheet_config.json
+   ```
+2. Edit `config/sheet_config.json` and update:
+   - `spreadsheet_id`: Your Google Sheet ID.
+   - `sheet_name`: The tab name to update.
+3. Edit `src/config.py` if you need to change the `SHEET_COLUMNS` list to match your sheet structure.
 
 ## Usage
 

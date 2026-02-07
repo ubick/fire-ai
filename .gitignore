@@ -12,6 +12,7 @@ __pycache__/
 # Application Data (Privacy)
 resources/credentials.json
 config/user_rules.json
+config/sheet_config.json
 rules.md
 csv/*.csv
 !csv/sample.csv
