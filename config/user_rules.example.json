@@ -1,0 +1,28 @@
+{
+    "category_mapping": {
+        "Groceries": "Groceries",
+        "Utilities": "Utilities"
+    },
+    "description_overrides": {
+        "NETFLIX": "Subscriptions"
+    },
+    "holiday_keywords": [
+        "Hotel",
+        "Airbnb",
+        "Flight"
+    ],
+    "foreign_currency_patterns": [
+        "EURO",
+        "USD"
+    ],
+    "hobbies_keywords": [
+        "gym",
+        "sports"
+    ],
+    "uk_hotel_keywords": [
+        "Premier Inn"
+    ],
+    "sports_stores": [
+        "Decathlon"
+    ]
+}

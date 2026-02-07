@@ -1,0 +1,13 @@
+Date,Description,Amount,Category,Notes
+2024-11-01,Tesco Groceries,-50.00,Groceries,Weekly shop
+2024-11-02,Shell Fuel,-60.00,Fuel,Car mapping test
+2024-11-03,Refund fro Tesco,10.00,Groceries,Refund test
+2024-11-05,Uber Trip,-15.00,Travel,Mapped to Holiday in Nov 24
+2024-11-10,Barclaycard Cashback,32.33,Finances,Should be Bank Legal Tax (Surplus)
+2024-11-12,Vanguard Fee,-9.44,Finances,Should be Bank Legal Tax (Expense)
+2024-11-15,Vodafone Bill,-45.00,Telephone & mobile,Mapped to Phone Net TV
+2024-11-20,IKEA Home,-100.00,House,Mapped to Household
+2024-11-25,Salary Payment,2500.00,Salary,Should be Excluded
+2024-11-26,Internal Transfer,-500.00,Transfers,Should be Excluded
+2024-11-28,Restaurant Meal,-40.00,Eating Out,Mapped to Restaurant
+2024-12-01,December Groceries,-100.00,Groceries,Should be in Dec bucket

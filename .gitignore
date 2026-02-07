@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+.pytest_cache/
+*.log
+
+# Mac
+.DS_Store
+
+# Application Data (Privacy)
+resources/credentials.json
+config/user_rules.json
+rules.md
+csv/*.csv
+!csv/sample.csv
+!csv/README.md
+
+# Spec (Privacy - if any real data exists)
+spec/*.csv
+!spec/ground-truth-format.csv
