@@ -102,12 +102,47 @@ def update_sheet(df: pd.DataFrame, credentials_path: str, override: bool = False
             target_row = len(dates_col) + 1
             dates_col.append(month_str) # Update local list to prevent overwriting if multiple new rows
             
-            # Add Date Update (Column A)
+        # Fetch existing row data to check for formulas
+        try:
+            # We fetch the entire row to be safe/simple, or just the range we care about.
+            # Fetching the whole row ensures we have data for all columns.
+            existing_row_values = sheet.row_values(target_row, value_render_option='FORMULA')
+        except Exception as e:
+            # If row doesn't exist (new row), this might fail or return empty.
+            # For new rows, it's empty, so no formulas to preserve.
+            # console.print(f"[red]Warning: Could not fetch existing row {target_row} to check formulas: {e}[/red]")
+            existing_row_values = []
+
+        # Add Date Update (Column A) - ONLY if no formula exists
+        # Column A is index 0 in existing_row_values
+        has_date_formula = False
+        if len(existing_row_values) > 0:
+            val_a = existing_row_values[0]
+            if isinstance(val_a, str) and val_a.startswith('='):
+                has_date_formula = True
+                
+        if not has_date_formula:
+            # Only update date if we are appending a new row OR overriding an existing value (not formula)
+            # If match_dt is True, we are overriding. If match_dt is False, we are appending.
+            # In both cases, if there is NO formula, we write/overwrite the date.
+            # Wait, if match_dt is True (existing row), do we rewrite the date? 
+            # Usually strict override would, but here we want to preserve formula.
+            # So yes, if no formula, we write the date (which effectively ensures it matches format or corrects it).
+            
+            # If it's a new row (match_dt is False), existing_row_values is empty, so has_date_formula is False.
+            # So we write the date. Correct.
+            
             updates.append({
                 'range': f"{SHEET_NAME}!A{target_row}",
                 'values': [[month_str]]
             })
-            console.print(f"[green]Appending new data for {month_str} to row {target_row}[/green]")
+            if not match_dt:
+                console.print(f"[green]Appending new data for {month_str} to row {target_row}[/green]")
+        else:
+            if not match_dt:
+                 # This is weird. New row but has formula? Unlikely unless we appended to a pre-filled template row.
+                 console.print(f"[yellow]Skipping Date write for {month_str} at row {target_row} (formula detected in Col A)[/yellow]")
+            pass
 
         # Prepare Category Values
         # We match dataframe columns to sheet headers dynamically starting from start_col_idx
@@ -116,31 +151,41 @@ def update_sheet(df: pd.DataFrame, credentials_path: str, override: bool = False
         # This ensures we respect the sheet's column order
         headers_slice = header_row[start_col_idx:]
         
-        cat_values = []
+        current_col_idx = start_col_idx # 0-based index of the column we are processing
+        
         for col_name in headers_slice:
-            if col_name in row:
-                val = row[col_name]
-                # Convert numpy types to native Python types
-                if hasattr(val, 'item'):
-                    val = val.item()
-                cat_values.append(val)
+            current_col_idx_sheet = current_col_idx # 0-based index in sheet
+            
+            # Check existing value for formula
+            # existing_row_values is 0-indexed.
+            has_formula = False
+            if current_col_idx_sheet < len(existing_row_values):
+                cell_val = existing_row_values[current_col_idx_sheet]
+                if isinstance(cell_val, str) and cell_val.startswith('='):
+                    has_formula = True
+            
+            if has_formula:
+                # console.print(f"Skipping {col_name} at row {target_row} (formula detected)")
+                pass
             else:
-                # If sheet has a column not in our DF, fill with 0? 
-                # Or keep as empty string to not overwrite formulas if any (unlikely in data section)
-                # But safer to put 0.0 for numeric columns.
-                cat_values.append(0.0)
+                if col_name in row:
+                    val = row[col_name]
+                    # Convert numpy types to native Python types
+                    if hasattr(val, 'item'):
+                        val = val.item()
+                else:
+                    # If sheet has a column not in our DF, fill with 0? 
+                    # But safer to put 0.0 for numeric columns.
+                    val = 0.0
                 
-        # Calculate A1 notation for the category block
-        start_letter = gspread.utils.rowcol_to_a1(target_row, start_col_idx + 1).replace(str(target_row), "")
-        end_letter = gspread.utils.rowcol_to_a1(target_row, len(header_row)).replace(str(target_row), "")
-        
-        range_name = f"{SHEET_NAME}!{start_letter}{target_row}:{end_letter}{target_row}"
-        
-        # console.print(f"   Writing categories to {range_name}")
-        updates.append({
-            'range': range_name,
-            'values': [cat_values]
-        })
+                # Update specific cell
+                cell_a1 = gspread.utils.rowcol_to_a1(target_row, current_col_idx + 1)
+                updates.append({
+                    'range': f"{SHEET_NAME}!{cell_a1}",
+                    'values': [[val]]
+                })
+            
+            current_col_idx += 1
 
     # 4. Execute Batch Update
     if updates:

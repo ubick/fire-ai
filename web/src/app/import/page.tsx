@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Upload, Eye, Loader2, CheckCircle2, AlertCircle } from "lucide-react"
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
@@ -41,7 +42,8 @@ export default function ImportPage() {
     const [defaultCsv, setDefaultCsv] = useState<string>("")
     const [selectedCsv, setSelectedCsv] = useState<string>("")
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear())
-    const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth()) // Previous month
+    const [selectedMonth, setSelectedMonth] = useState<number>(-1) // -1 = Auto
+    const [override, setOverride] = useState<boolean>(false)
     const [loading, setLoading] = useState(false)
     const [result, setResult] = useState<ProcessResult | null>(null)
     const [error, setError] = useState<string | null>(null)
@@ -70,16 +72,20 @@ export default function ImportPage() {
         setResult(null)
 
         try {
+            const payload = {
+                csv_file: selectedCsv,
+                mode: mode,
+                override: override,
+                ...(selectedMonth === -1
+                    ? { auto_date: true }
+                    : { year: selectedYear, month: selectedMonth, auto_date: false }
+                )
+            }
+
             const res = await fetch(`${API_URL}/api/process`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    csv_file: selectedCsv,
-                    year: selectedYear,
-                    month: selectedMonth,
-                    mode: mode,
-                    override: false,
-                }),
+                body: JSON.stringify(payload),
             })
 
             const data = await res.json()
@@ -128,16 +134,18 @@ export default function ImportPage() {
                     {/* Selectors Row */}
                     <div className="grid gap-4 md:grid-cols-3">
                         {/* CSV File Selector */}
-                        <div className="space-y-2">
+                        <div className="space-y-2 min-w-0">
                             <label className="text-sm font-medium">CSV File</label>
                             <Select value={selectedCsv} onValueChange={setSelectedCsv}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select CSV file" />
+                                <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select CSV file" className="truncate" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {csvFiles.map((file) => (
                                         <SelectItem key={file} value={file}>
-                                            {file} {file === defaultCsv && "(newest)"}
+                                            <span className="truncate block max-w-[200px] md:max-w-[300px]" title={file}>
+                                                {file} {file === defaultCsv && "(newest)"}
+                                            </span>
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -148,17 +156,24 @@ export default function ImportPage() {
                         <div className="space-y-2">
                             <label className="text-sm font-medium">Month</label>
                             <Select
-                                value={`${selectedYear}-${selectedMonth}`}
+                                value={selectedMonth === -1 ? "auto" : `${selectedYear}-${selectedMonth}`}
                                 onValueChange={(val) => {
-                                    const [year, month] = val.split("-").map(Number)
-                                    setSelectedYear(year)
-                                    setSelectedMonth(month)
+                                    if (val === "auto") {
+                                        setSelectedMonth(-1)
+                                    } else {
+                                        const [year, month] = val.split("-").map(Number)
+                                        setSelectedYear(year)
+                                        setSelectedMonth(month)
+                                    }
                                 }}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select month" />
                                 </SelectTrigger>
                                 <SelectContent>
+                                    <SelectItem value="auto">
+                                        <span className="font-medium">Auto (Next Logical Month)</span>
+                                    </SelectItem>
                                     {monthOptions.map(({ year, month }) => (
                                         <SelectItem key={`${year}-${month}`} value={`${year}-${month}`}>
                                             {monthNames[month - 1]} {year}
@@ -168,8 +183,22 @@ export default function ImportPage() {
                             </Select>
                         </div>
 
-                        {/* Spacer for alignment */}
-                        <div className="hidden md:block" />
+                        {/* Override Checkbox */}
+                        <div className="flex items-center space-x-2 pt-8">
+                            <Checkbox
+                                id="override"
+                                checked={override}
+                                onCheckedChange={(checked) => setOverride(checked as boolean)}
+                            />
+                            <div className="grid gap-1.5 leading-none">
+                                <label
+                                    htmlFor="override"
+                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                    Override existing data
+                                </label>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Action Buttons */}
