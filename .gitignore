@@ -10,6 +10,9 @@ __pycache__/
 .DS_Store
 
 .vscode
+.agent/
+.gemini/
+.gsd/
 
 # Application Data (Privacy)
 resources/credentials.json
