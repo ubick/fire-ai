@@ -7,10 +7,11 @@ A personal finance tracking application that categorizes transactions from CSV e
 ## ✨ Features
 
 ### Web App
-- **Dashboard**: Visualize monthly spending with interactive charts
-- **Local Caching**: Data cached in browser localStorage (7-day expiry) — no auto-fetches
-- **Import Transactions**: Process CSV files with shadow mode preview or live sync
-- **Google Sheets Sync**: Push categorized data to your tracking spreadsheet
+- **Dashboard**: Visualize monthly spending with interactive charts, YoY comparisons, and 12-month trends.
+- **Budget Management**: Set and track monthly budgets per category directly in the UI.
+- **Local Caching**: Data cached in browser localStorage for instant load times (7-day expiry).
+- **Smart Import**: Auto-date detection for next month's data.
+- **Google Sheets Sync**: Two-way sync for transactions and budgets.
 
 ### CLI
 - **Smart Categorization**: Auto-categorize transactions using custom rules
