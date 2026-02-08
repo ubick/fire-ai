@@ -1,4 +1,4 @@
-# 🔥 FIRE AI - Financial Independence Tracker
+# 🔥 FIRE AI - Financial Tracker
 
 A personal finance tracking application that categorizes transactions from CSV exports and syncs with Google Sheets, featuring both a modern web dashboard and a CLI.
 
