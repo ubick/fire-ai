@@ -11,4 +11,7 @@ if [ ! -f "$VENV_PYTHON" ]; then
     exit 1
 fi
 
-"$VENV_PYTHON" "$SCRIPT_DIR/main.py" "$@"
+# Run from cli directory so relative paths like csv/file.csv work
+cd "$SCRIPT_DIR/cli"
+"$VENV_PYTHON" main.py "$@"
+

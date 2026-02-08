@@ -1,105 +1,128 @@
-# Fire AI - Financial Transaction Processor
+# 🔥 FIRE AI - Financial Independence Tracker
 
-A Python application for categorizing and aggregating financial transactions from CSV exports (e.g., Barclays, Amex) to track monthly spending against a Google Sheet.
+A personal finance tracking application that categorizes transactions from CSV exports and syncs with Google Sheets, featuring both a modern web dashboard and a CLI.
 
-## Features
-- **Smart Categorization**: Automatically categorizes transactions based on your custom rules (`config/user_rules.json`).
-- **Auto-Date Detection**: Automatically determines the next month to process based on the last entry in your Google Sheet.
-- **Google Sheets Integration**: Updates your tracker with raw category data while preserving your sheet's formulas for totals.
-- **Shadow Mode**: Run dry-runs to visualize changes in a rich terminal table without modifying the sheet.
-- **Ordered Visualization**: Category columns in shadow mode are automatically sorted by amount (highest first).
-- **Demo Mode**: Instantly try the app with sample data without any setup.
-- **Privacy Focused**: Configuration, rules, and credentials are completely separated from the code.
+![Dashboard Preview](docs/images/dashboard-preview.png)
 
-## Quick Start (Demo Mode)
+## ✨ Features
 
-Want to see it in action? Just run the script without arguments:
+### Web App
+- **Dashboard**: Visualize monthly spending with interactive charts
+- **Local Caching**: Data cached in browser localStorage (7-day expiry) — no auto-fetches
+- **Import Transactions**: Process CSV files with shadow mode preview or live sync
+- **Google Sheets Sync**: Push categorized data to your tracking spreadsheet
 
-```bash
-./run.sh
-```
+### CLI
+- **Smart Categorization**: Auto-categorize transactions using custom rules
+- **Auto-Date Detection**: Automatically determines the next month to process
+- **Shadow Mode**: Preview changes in terminal without modifying sheets
+- **Demo Mode**: Try instantly with sample data
 
-This will load sample data (`csv/sample.csv`) and run in **Shadow Mode**, showing you the aggregated results in the terminal.
+## 🚀 Quick Start
 
-## Setup
-
-### 1. Prerequisites
+### Prerequisites
 - Python 3.9+
-- A Google Cloud Project with the Sheets API enabled.
+- Node.js 20+ (for web app)
+- Google Cloud Project with Sheets API enabled
 
-### 2. Installation
-1. Clone the repository.
-2. Create and activate a virtual environment:
-   ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### 3. Configuration
-
-#### Google Credentials
-1. Place your Google Cloud service account credentials JSON file in `resources/credentials.json`.
-   - *Note: This path is gitignored.*
-2. **Important**: Share your Google Sheet with the `client_email` found in your credentials JSON file (give it **Editor** access).
-
-#### User Rules
-1. Copy the example rules file:
-   ```bash
-   cp config/user_rules.example.json config/user_rules.json
-   ```
-2. Edit `config/user_rules.json` to define your specific category mappings, keywords, and patterns.
-   - *Note: `config/user_rules.json` is gitignored to protect your personal financial logic.*
-
-#### Spreadsheet Config
-1. Copy the example configuration:
-   ```bash
-   cp config/sheet_config.example.json config/sheet_config.json
-   ```
-2. Edit `config/sheet_config.json` and update:
-   - `spreadsheet_id`: Your Google Sheet ID.
-   - `sheet_name`: The tab name to update.
-3. Edit `src/config.py` if you need to change the `SHEET_COLUMNS` list to match your sheet structure.
-
-## Usage
-
-### Shadow Mode (Dry Run)
-Process a CSV file and visualize the result without updating the sheet. Columns are automatically sorted by amount (highest first).
+### Installation
 
 ```bash
-./run.sh --csv path/to/your.csv --shadow-mode
+# Clone and enter directory
+git clone https://github.com/yourusername/fire-ai.git
+cd fire-ai
+
+# Setup Python environment
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# Setup web app
+cd web && npm install && cd ..
 ```
-*Tip: If you don't provide a date, the app will try to detect the relevant month automatically, or fall back to the latest data in the CSV.*
 
-### Live Update
-Process a CSV and update the Google Sheet.
+### Configuration
 
+#### 1. Google Credentials
+Place your service account JSON in `cli/resources/credentials.json`:
 ```bash
-./run.sh --csv path/to/your.csv
+# This path is gitignored for security
+```
+**Important**: Share your Google Sheet with the service account email (Editor access).
+
+#### 2. Sheet Config
+```bash
+cp cli/config/sheet_config.example.json cli/config/sheet_config.json
+# Edit with your spreadsheet_id and sheet_name
 ```
 
-**Auto-Date Behavior:**
-If you omit the `--date` argument, the app will:
-1. Query your Google Sheet to find the last processed month.
-2. Calculate the next month.
-3. Filter the CSV for that specific month.
-4. **Fallback:** If no data is found for the target month, the app will automatically detect and process the latest month available in the CSV.
-5. Process and append the data to the sheet.
+#### 3. User Rules (Optional)
+```bash
+cp cli/config/user_rules.example.json cli/config/user_rules.json
+# Customize category mappings and keywords
+```
 
-**Note:** The app writes only the **Month** and **Raw Category Columns**. Summary columns (Totals, Necessary, Discretionary, Excess) are calculated for display in the terminal but are **excluded** from the update to avoid overwriting your sheet's formulas.
+## 💻 Usage
 
-## Testing
-Run the test suite to ensure everything is working correctly:
+### Start Everything (Recommended)
+```bash
+./start.sh
+```
+This starts both servers:
+- **API**: http://localhost:8000
+- **Web**: http://localhost:3000
+
+Press `Ctrl+C` to stop both.
+
+### CLI Only
+```bash
+# Demo mode with sample data
+./run.sh
+
+# Shadow mode (preview without updating sheet)
+./run.sh --csv path/to/transactions.csv --shadow-mode
+
+# Live update to Google Sheets
+./run.sh --csv path/to/transactions.csv
+```
+
+## 🔒 Security
+
+The following files contain sensitive data and are **gitignored**:
+- `cli/resources/credentials.json` — Google service account key
+- `cli/config/sheet_config.json` — Your spreadsheet ID
+- `cli/config/user_rules.json` — Personal categorization rules
+- `cli/csv/*.csv` — Transaction files (except sample.csv)
+
+**Before committing**, verify sensitive files aren't tracked:
+```bash
+git ls-files | grep -E "(credentials|sheet_config.json|user_rules.json)"
+# Should return empty
+```
+
+## 📁 Project Structure
+
+```
+fire-ai/
+├── api/                 # FastAPI backend
+│   └── server.py
+├── cli/                 # Python CLI application
+│   ├── config/          # Rules and sheet config
+│   ├── csv/             # Transaction CSVs
+│   ├── resources/       # Credentials (gitignored)
+│   └── src/             # Core logic
+├── web/                 # Next.js frontend
+│   └── src/app/         # React pages
+├── start.sh             # Start both servers
+└── run.sh               # CLI runner
+```
+
+## 🧪 Testing
+
 ```bash
 ./test.sh
 ```
 
-## Project Structure
-- `src/`: Application source code.
-- `config/`: Configuration files (rules).
-- `csv/`: Place your transaction CSVs here (gitignored).
-- `resources/`: Credentials (gitignored).
-- `tests/`: Unit and E2E tests.
+## License
+
+MIT

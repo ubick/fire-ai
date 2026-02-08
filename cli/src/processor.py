@@ -9,8 +9,9 @@ from pathlib import Path
 
 def load_rules():
     """Loads mapping rules from config/user_rules.json or falls back to example."""
-    rules_path = Path("config/user_rules.json")
-    example_path = Path("config/user_rules.example.json")
+    cli_dir = Path(__file__).parent.parent
+    rules_path = cli_dir / "config/user_rules.json"
+    example_path = cli_dir / "config/user_rules.example.json"
     
     if rules_path.exists():
         with open(rules_path, 'r') as f:

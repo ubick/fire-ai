@@ -17,7 +17,7 @@ def process(
     date: Optional[str] = typer.Option(None, "--date", "-d", help="Filter by month (e.g., 'may24', 'may-24', '2024-05'). If invalid/missing, attempts auto-detection."),
     dry_run: bool = typer.Option(False, "--dry-run", "--shadow-mode", help="Change to True to run without updating Google Sheets"),
     override: bool = typer.Option(False, "--override", help="Overwrite existing data for the selected month"),
-    credentials_path: str = typer.Option("resources/credentials.json", "--creds", help="Path to Google Cloud credentials")
+    credentials_path: str = typer.Option("cli/resources/credentials.json", "--creds", help="Path to Google Cloud credentials")
 ):
     """
     Process financial transactions and update Google Sheets.
@@ -34,7 +34,8 @@ def process(
             console.print("[bold yellow]Proceeding in SHADOW mode (ignoring --override)...[/bold yellow]")
             override = False
     if csv_path is None:
-        csv_path = "csv/sample.csv"
+        cli_dir = Path(__file__).parent
+        csv_path = str(cli_dir / "csv/sample.csv")
         dry_run = True
         is_demo = True
         console.print("[bold magenta]Running in DEMO MODE using sample data (Shadow Mode forced)[/bold magenta]")

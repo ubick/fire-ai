@@ -11,4 +11,4 @@ if [ ! -f "$VENV_PYTEST" ]; then
     exit 1
 fi
 
-"$VENV_PYTEST" "$@"
+"$VENV_PYTEST" "$SCRIPT_DIR/cli/tests" "$@"

@@ -9,8 +9,9 @@ console = Console()
 
 def load_sheet_config():
     """Loads spreadsheet ID and Name from config/sheet_config.json or falls back to example."""
-    config_path = Path("config/sheet_config.json")
-    example_path = Path("config/sheet_config.example.json")
+    cli_dir = Path(__file__).parent.parent
+    config_path = cli_dir / "config/sheet_config.json"
+    example_path = cli_dir / "config/sheet_config.example.json"
     
     config = {}
     if config_path.exists():
