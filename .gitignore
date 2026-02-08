@@ -9,6 +9,8 @@ __pycache__/
 # Mac
 .DS_Store
 
+.vscode
+
 # Application Data (Privacy)
 resources/credentials.json
 config/user_rules.json

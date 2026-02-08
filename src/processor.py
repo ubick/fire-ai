@@ -63,12 +63,24 @@ def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
 
     # 1c. Apply Sports Stores logic (Decathlon, Go Outdoors)
     # Under 200 GBP -> Clothing, Over 200 GBP -> Hobbies (cycling)
+    # Only apply if user hasn't explicitly categorized it as something else we want to keep (e.g. Health & Beauty)
+    # For now, we only apply this if the current category is 'Shopping' or unknown, OR if it matches typical sports store categories
+    # But to fix the specific issue with Decathlon moving from Health & Beauty to Clothing when user wants it in H&B:
+    # We should skip this rule if the category is already 'Health & Beauty' (or raw equivalent)
+    # However, 'CATEGORY' here is the raw category from CSV.
+    # Raw Category for Decathlon was 'Health & Beauty'.
+    # So we should skip if category is 'Health & Beauty'.
     for store in SPORTS_STORES:
         mask = df['DESCRIPTION'].str.contains(store, case=False, na=False)
+        # Skip if already categorized as Health & Beauty (or mapped equivalent)
+        # 'Health & Beauty', 'Personal Care', 'Healthcare'
+        mask = mask & ~df['CATEGORY'].isin(['Health & Beauty', 'Healthcare', 'Personal Care'])
+        
         # Under 200 -> Clothing
         df.loc[mask & (df['AMOUNT'].abs() < 200), 'CATEGORY'] = 'Clothing & shoes'
         # Over 200 -> Hobbies (cycling)
         df.loc[mask & (df['AMOUNT'].abs() >= 200), 'CATEGORY'] = 'Hobbies'
+
 
     # 1d. Apply Holiday Keywords Logic (Split Travel)
     # If Category is Travel (or will be mapped to Transport), but description matches Holiday keywords, force to Holiday.
@@ -78,11 +90,18 @@ def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
 
     # 1e. Apply Foreign Currency Detection
     # Any transaction in a foreign currency is likely a holiday expense.
+    # 1e. Apply Foreign Currency Detection
+    # Any transaction in a foreign currency is likely a holiday expense.
     for pattern in FOREIGN_CURRENCY_PATTERNS:
         mask = df['DESCRIPTION'].str.contains(pattern, case=False, na=False)
-        exclude_cats = ['Salary', 'Transfers', 'Credit card payments', 'Securities trades', 'Savings', 'Investments']
+        # Add basic categories to exclude list to prevent overwriting user's classification for food/transport while abroad
+        exclude_cats = [
+            'Salary', 'Transfers', 'Credit card payments', 'Securities trades', 'Savings', 'Investments',
+            'Groceries', 'Transport', 'Eating Out', 'Eating out', 'Restaurant', 'Food'
+        ]
         mask = mask & ~df['CATEGORY'].isin(exclude_cats)
         df.loc[mask, 'CATEGORY'] = 'Other business costs'  # Maps to Holiday
+
 
     # 2. Apply Category Mapping
     df['MAPPED_CATEGORY'] = df['CATEGORY'].map(CATEGORY_MAPPING).fillna(df['CATEGORY'])
