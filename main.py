@@ -219,10 +219,18 @@ def print_aggregated_table(df: pd.DataFrame, gt_data: dict = None):
     # Identify summary columns for styling
     summary_cols = ['Totals', 'Necessary', 'Discretionary', 'Excess']
     
-    categories = [col for col in df.columns if col != 'Month']
+    categories = [col for col in df.columns if col != 'Month' and col not in summary_cols]
     
+    # Sort categories by total amount (descending)
+    # Use absolute sum to handle potential negative signs if any, though expenses are positive here.
+    # Actually, expenses are positive, so sum is fine.
+    categories_sorted = sorted(categories, key=lambda c: df[c].sum(), reverse=True)
+    
+    all_columns = summary_cols + categories_sorted
+
     # Add columns
-    for cat in categories:
+    for cat in all_columns:
+        if cat not in df.columns: continue # Safety check
         style = "bold magenta" if cat in summary_cols else "white"
         table.add_column(cat, justify="right", style=style)
         
@@ -231,7 +239,9 @@ def print_aggregated_table(df: pd.DataFrame, gt_data: dict = None):
         month_dt = row['Month']
         month_str = month_dt.strftime('%b, %y')
         
-        row_data = [month_str] + [f"{row[cat]:.2f}" for cat in categories]
+        # Build row data based on sorted columns
+        row_values = [f"{row[cat]:.2f}" if cat in df.columns else "0.00" for cat in all_columns]
+        row_data = [month_str] + row_values
         table.add_row(*row_data)
 
     console.print(table)

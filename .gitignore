@@ -23,3 +23,6 @@ csv/*.csv
 # Spec (Privacy - if any real data exists)
 spec/*.csv
 !spec/ground-truth-format.csv
+
+# Scripts
+scripts/
