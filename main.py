@@ -23,6 +23,16 @@ def process(
     Process financial transactions and update Google Sheets.
     """
     is_demo = False
+
+    if dry_run and override:
+        console.print("[bold red]WARNING: You have specified both --shadow-mode (read-only) and --override (write).[/bold red]")
+        console.print("[yellow]--override implies connecting and writing to Google Sheets.[/yellow]")
+        if typer.confirm("Do you want to continue in WRITE mode (disabling shadow mode)?", default=False):
+            dry_run = False
+            console.print("[bold green]Proceeding in WRITE mode...[/bold green]")
+        else:
+            console.print("[bold yellow]Proceeding in SHADOW mode (ignoring --override)...[/bold yellow]")
+            override = False
     if csv_path is None:
         csv_path = "csv/sample.csv"
         dry_run = True
