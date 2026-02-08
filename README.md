@@ -7,6 +7,7 @@ A Python application for categorizing and aggregating financial transactions fro
 - **Auto-Date Detection**: Automatically determines the next month to process based on the last entry in your Google Sheet.
 - **Google Sheets Integration**: Updates your tracker with raw category data while preserving your sheet's formulas for totals.
 - **Shadow Mode**: Run dry-runs to visualize changes in a rich terminal table without modifying the sheet.
+- **Ordered Visualization**: Category columns in shadow mode are automatically sorted by amount (highest first).
 - **Demo Mode**: Instantly try the app with sample data without any setup.
 - **Privacy Focused**: Configuration, rules, and credentials are completely separated from the code.
 
@@ -66,7 +67,7 @@ This will load sample data (`csv/sample.csv`) and run in **Shadow Mode**, showin
 ## Usage
 
 ### Shadow Mode (Dry Run)
-Process a CSV file and visualize the result without updating the sheet.
+Process a CSV file and visualize the result without updating the sheet. Columns are automatically sorted by amount (highest first).
 
 ```bash
 ./run.sh --csv path/to/your.csv --shadow-mode
@@ -85,7 +86,8 @@ If you omit the `--date` argument, the app will:
 1. Query your Google Sheet to find the last processed month.
 2. Calculate the next month.
 3. Filter the CSV for that specific month.
-4. Process and append the data to the sheet.
+4. **Fallback:** If no data is found for the target month, the app will automatically detect and process the latest month available in the CSV.
+5. Process and append the data to the sheet.
 
 **Note:** The app writes only the **Month** and **Raw Category Columns**. Summary columns (Totals, Necessary, Discretionary, Excess) are calculated for display in the terminal but are **excluded** from the update to avoid overwriting your sheet's formulas.
 
