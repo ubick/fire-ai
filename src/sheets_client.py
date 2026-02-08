@@ -158,3 +158,56 @@ def update_sheet(df: pd.DataFrame, credentials_path: str, override: bool = False
         # If we skipped everything because override=False, we should probably clearly say so
         # handled by per-row logging
         pass
+
+def fetch_month_data(credentials_path: str, target_month: pd.Period) -> dict | None:
+    """
+    Fetches the data row for a specific month from the sheet.
+    Returns a dictionary of {Category: Amount} or None if not found.
+    """
+    try:
+        client = get_client(credentials_path)
+        sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
+        
+        # 1. Find the row
+        dates_col = sheet.col_values(1)
+        target_row_idx = None
+        
+        for i, val in enumerate(dates_col):
+            try:
+                dt = pd.to_datetime(val, format='%b, %y')
+                if dt.year == target_month.year and dt.month == target_month.month:
+                    target_row_idx = i + 1
+                    break
+            except:
+                continue
+                
+        if not target_row_idx:
+            return None
+            
+        # 2. Read the row
+        row_values = sheet.row_values(target_row_idx)
+        header_row = sheet.row_values(1)
+        
+        # Map headers to values
+        data = {}
+        for i, header in enumerate(header_row):
+            if i < len(row_values):
+                val = row_values[i]
+                # Try to clean numeric values
+                try:
+                    # Remove currency symbols etc if needed, but gspread usually returns raw values or formatted strings
+                    # We want float
+                    if isinstance(val, str):
+                        val = val.replace(',', '').replace('£', '')
+                        if val == '': val = 0.0
+                    data[header] = float(val)
+                except:
+                    data[header] = val
+            else:
+                data[header] = 0.0
+                
+        return data
+        
+    except Exception as e:
+        console.print(f"[red]Error fetching data from sheet: {e}[/red]")
+        return None

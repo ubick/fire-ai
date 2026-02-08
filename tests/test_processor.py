@@ -23,6 +23,21 @@ def test_categorize_transactions(raw_data):
     # Check exclusions (Salary should be removed)
     assert 'Salary' not in df['MAPPED_CATEGORY'].values
 
+def test_categorize_simplified_logic():
+    """Verify that specific rules are gone (e.g. Decathlon goes to Mapping not Rule)"""
+    data = {
+        'DATE': pd.to_datetime(['2024-11-20']),
+        'DESCRIPTION': ['Decathlon Purchase'],
+        'AMOUNT': [-50.00],
+        'CATEGORY': ['Health & Beauty'] 
+    }
+    df = pd.DataFrame(data)
+    processed = categorize_transactions(df)
+    
+    # Decathlon (Health & Beauty) -> Personal Care (via Mapping)
+    # Old logic would have moved it to Clothing (<200)
+    assert processed['MAPPED_CATEGORY'].iloc[0] == 'Personal Care'
+
 def test_aggregate_categories(raw_data):
     df = categorize_transactions(raw_data)
     agg_df = aggregate_categories(df)
