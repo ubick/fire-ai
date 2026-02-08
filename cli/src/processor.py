@@ -24,12 +24,7 @@ def load_rules():
         console.print("[red]Error: No rules configuration found![/red]")
         return {}
 
-# Load Rules
-rules = load_rules()
-
-CATEGORY_MAPPING = rules.get("category_mapping", {})
-DESCRIPTION_OVERRIDES = rules.get("description_overrides", {})
-# Categories to ALWAYS exclude from final output
+# Load Rules dynamically in categorize_transactions to support long-running processes
 EXCLUDED_CATEGORIES = ["EXCLUDE"]
 
 from src.config import SHEET_COLUMNS
@@ -44,12 +39,17 @@ def categorize_transactions(df: pd.DataFrame) -> pd.DataFrame:
     if df['CATEGORY'].dtype != 'object':
         df['CATEGORY'] = df['CATEGORY'].astype('object')
     
+    # Load Rules Fresh
+    rules = load_rules()
+    category_mapping = rules.get("category_mapping", {})
+    description_overrides = rules.get("description_overrides", {})
+
     # 1. Apply Description Overrides
-    for desc, cat in DESCRIPTION_OVERRIDES.items():
+    for desc, cat in description_overrides.items():
         df.loc[df['DESCRIPTION'].str.contains(desc, case=False, na=False), 'CATEGORY'] = cat
 
     # 2. Apply Category Mapping
-    df['MAPPED_CATEGORY'] = df['CATEGORY'].map(CATEGORY_MAPPING).fillna(df['CATEGORY'])
+    df['MAPPED_CATEGORY'] = df['CATEGORY'].map(category_mapping).fillna(df['CATEGORY'])
     
     # 3. Filter Excluded Categories
     df = df[~df['MAPPED_CATEGORY'].isin(EXCLUDED_CATEGORIES)]

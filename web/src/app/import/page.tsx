@@ -131,19 +131,21 @@ export default function ImportPage() {
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                    {/* Selectors Row */}
-                    <div className="grid gap-4 md:grid-cols-3">
+                    {/* Form Layout: Stacked vertically with better spacing */}
+                    <div className="flex flex-col gap-6 max-w-xl">
                         {/* CSV File Selector */}
-                        <div className="space-y-2 min-w-0">
-                            <label className="text-sm font-medium">CSV File</label>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                <Upload className="h-4 w-4" /> CSV File
+                            </label>
                             <Select value={selectedCsv} onValueChange={setSelectedCsv}>
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select CSV file" className="truncate" />
+                                <SelectTrigger className="w-full h-11">
+                                    <SelectValue placeholder="Select CSV file" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {csvFiles.map((file) => (
                                         <SelectItem key={file} value={file}>
-                                            <span className="truncate block max-w-[200px] md:max-w-[300px]" title={file}>
+                                            <span className="truncate block max-w-[300px]" title={file}>
                                                 {file} {file === defaultCsv && "(newest)"}
                                             </span>
                                         </SelectItem>
@@ -154,7 +156,9 @@ export default function ImportPage() {
 
                         {/* Month Selector */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Month</label>
+                            <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                                <Loader2 className="h-4 w-4" /> Target Month
+                            </label>
                             <Select
                                 value={selectedMonth === -1 ? "auto" : `${selectedYear}-${selectedMonth}`}
                                 onValueChange={(val) => {
@@ -167,7 +171,7 @@ export default function ImportPage() {
                                     }
                                 }}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-11">
                                     <SelectValue placeholder="Select month" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -184,33 +188,37 @@ export default function ImportPage() {
                         </div>
 
                         {/* Override Checkbox */}
-                        <div className="flex items-center space-x-2 pt-8">
+                        <div className="flex items-center space-x-3 p-4 rounded-lg bg-secondary/30 border border-border/50 transition-colors hover:bg-secondary/50">
                             <Checkbox
                                 id="override"
                                 checked={override}
                                 onCheckedChange={(checked) => setOverride(checked as boolean)}
+                                className="h-5 w-5"
                             />
-                            <div className="grid gap-1.5 leading-none">
+                            <div className="grid gap-1 leading-none cursor-pointer select-none" onClick={() => setOverride(!override)}>
                                 <label
                                     htmlFor="override"
-                                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    className="text-sm font-semibold leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
                                     Override existing data
                                 </label>
+                                <p className="text-xs text-muted-foreground">
+                                    Check this to overwrite data for the selected month
+                                </p>
                             </div>
                         </div>
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-4">
+                    <div className="flex flex-col sm:flex-row gap-4 pt-4">
                         <Button
                             variant="outline"
                             size="lg"
                             onClick={() => handleProcess("shadow")}
                             disabled={loading || !selectedCsv}
-                            className="gap-2"
+                            className="flex-1 h-12 gap-2 text-base font-medium transition-all"
                         >
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Eye className="h-5 w-5" />}
                             Shadow Mode (Preview)
                         </Button>
 
@@ -218,9 +226,9 @@ export default function ImportPage() {
                             size="lg"
                             onClick={() => handleProcess("live")}
                             disabled={loading || !selectedCsv}
-                            className="gap-2 bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700"
+                            className="flex-1 h-12 gap-2 text-base font-medium bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg shadow-orange-500/20 transition-all border-none"
                         >
-                            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
                             Live Import
                         </Button>
                     </div>
