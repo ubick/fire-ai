@@ -10,7 +10,6 @@ __pycache__/
 .DS_Store
 
 .vscode
-.agent/
 .gemini/
 .gsd/
 
