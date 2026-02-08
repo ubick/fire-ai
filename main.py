@@ -16,6 +16,7 @@ def process(
     csv_path: Optional[str] = typer.Option(None, "--csv", "-c", help="Path to the transaction CSV file. Defaults to demo data if not provided."),
     date: Optional[str] = typer.Option(None, "--date", "-d", help="Filter by month (e.g., 'may24', 'may-24', '2024-05'). If invalid/missing, attempts auto-detection."),
     dry_run: bool = typer.Option(False, "--dry-run", "--shadow-mode", help="Change to True to run without updating Google Sheets"),
+    override: bool = typer.Option(False, "--override", help="Overwrite existing data for the selected month"),
     credentials_path: str = typer.Option("resources/credentials.json", "--creds", help="Path to Google Cloud credentials")
 ):
     """
@@ -144,7 +145,7 @@ def process(
             df_to_write = aggregated_df[cols_to_write].copy()
             
             console.print("[bold blue]Updating Google Sheets...[/bold blue]")
-            update_sheet(df_to_write, credentials_path)
+            update_sheet(df_to_write, credentials_path, override=override)
             console.print("[bold green]Update Complete![/bold green]")
             
             # Display what was written (Full Table including summaries for user context)

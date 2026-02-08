@@ -35,195 +35,126 @@ def get_last_transaction_date(credentials_path: str) -> pd.Timestamp | None:
         traceback.print_exc()
         return None
 
-def update_sheet(df: pd.DataFrame, credentials_path: str):
+def update_sheet(df: pd.DataFrame, credentials_path: str, override: bool = False):
     """
     Updates the Google Sheet with new monthly data.
+    If override is True, overwrites existing rows for the matching month.
     """
     client = get_client(credentials_path)
     sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
     
-    # 1. Find the last filled row based on Column A (Month)
-    # Get all values in Column A
+    # 1. Map existing months to row indices
     dates_col = sheet.col_values(1)
-    last_row_index = len(dates_col) # 1-based index of the last row
+    sheet_dates = {}
     
-    # 2. Determine the last month present in the sheet
-    last_sheet_date = None
-    # Iterate backwards to find the last date
-    for val in reversed(dates_col):
+    for i, val in enumerate(dates_col):
         try:
-            # Try parsing "MMM, YY" (e.g. "Oct, 23")
-            last_sheet_date = pd.to_datetime(val, format='%b, %y')
-            break
+            # Parse "MMM, YY" (e.g. "Oct, 23")
+            dt = pd.to_datetime(val, format='%b, %y')
+            sheet_dates[dt] = i + 1 # 1-based index
         except:
             continue
             
-    if last_sheet_date is None:
-        console.print("[yellow]Warning: Could not determine last date in sheet. Appending all data.[/yellow]")
-        # Fallback: strict append at end
-    else:
-        # Filter dataframe for months > last_sheet_date
-        # Ensure df['Month'] is datetime
-        df['Month'] = pd.to_datetime(df['Month'])
-        df = df[df['Month'] > last_sheet_date]
-    
-    if df.empty:
-        console.print("[yellow]No new data to append (all months already in sheet).[/yellow]")
+    # 2. Identify column range for categories
+    header_row = sheet.row_values(1)
+    try:
+        # We assume the data columns start at "Bank, Legal, Tax"
+        # and follow the order in SHEET_COLUMNS (or broadly the header order)
+        start_col_idx = header_row.index("Bank, Legal, Tax") # 0-based index
+    except ValueError:
+        console.print("[red]Error: Could not find 'Bank, Legal, Tax' column in sheet headers.[/red]")
         return
 
-    # 3. Format Data for Writing
-    # Format Month column to "MMM, YY" (e.g., "Nov, 24")
-    df_output = df.copy()
-    df_output['Month'] = df_output['Month'].dt.strftime('%b, %y')
+    # 3. Process each row in the input DataFrame
+    updates = []
     
-    # Convert to list of lists
-    # We need to ensure we map to the correct columns. 
-    # The df columns are already ordered by aggregate_categories:
-    # Month, Bank..., Groceries...
-    
-    # The sheet screenshot shows Column A is Date.
-    # But where do the expense columns start?
-    # Screenshot:
-    # A: Date (Col 1)
-    # B: Totals ?
-    # C: Necessary Total ?
-    # D: Discret Total ?
-    # E: Excess Total ?
-    # F: Bank, Legal, Tax (Col 6)
-    # ...
-    
-    # CRITICAL: We need to respect the column offset!
-    # The aggregation calculates the values for the categories from Col F onwards.
-    # We need to check where "Bank, Legal, Tax" is in the header row.
-    
-    header_row = sheet.row_values(1) # Assuming Headers are in Row 1
-    try:
-        start_col_idx = header_row.index("Bank, Legal, Tax")
-        # gspread uses 1-based indexing for get, 0-based for python lists
-        # But we need to construct the row to write.
-        # The row structure in sheet:
-        # [Date, (Formulas specific to sheet...), Category Values...]
-        
-        # WE CANNOT OVERWRITE COLUMNS B, C, D, E if they contain formulas.
-        # AND `append_rows` writes a contiguous block.
-        
-        # STRATEGY: 
-        # Write Date to Col A.
-        # Write Category Values to Col F onwards.
-        # Leave B, C, D, E blank? No, creating a NEW row usually needs formulas copied down.
-        # User said "figure out the next row... write in 91".
-        
-        # If we use `update_cells` or specific ranges, we can skip columns.
-        
-        # Let's map headers to their indices to be safe.
-        header_map = {name: i for i, name in enumerate(header_row)}
-        
-        updates = []
-        current_row = last_row_index + 1
-        
-        for _, row in df_output.iterrows():
-            # Update Categories
-            # Prepare a list of values for the contiguous block of categories if they are contiguous
-            # List of columns: 
-            # "Bank, Legal, Tax", "Groceries", "Transport", "Car", "Phone, Net, TV", 
-            # "Utilities", "Kids", "Experiences", "Restaurant", "Clothing", 
-            # "Household", "Hobbies", "ATM", "Subscriptions", 
-            # "Personal Care", "Gifts", "Holiday"
-            
-            # Are they contiguous in the sheet?
-            # From screenshot: Bank... -> Groceries -> Transport -> Car -> Phone.. -> Utilities -> Kids -> Experiences -> Restaurant
-            # Looks contiguous from F onwards.
-            
-            # Let's verify the header order matches our list
-            # We will construct the row values based on the SHEET'S header order for saftey.
-            
-            category_start_col_char = 'F' # Assuming index 5
-            # Actually, let's just build the range for the category block.
-            
-            # Get values for categories in the order they appear in the sheet
-            # We need to find the column index for each category in our DF
-            
-            # Better approach:
-            # 1. Read the header row again to be sure.
-            # 2. Construct the update vector.
-            pass
-            
-            data_values = []
-            # We assume the categories in the sheet start at 'Bank, Legal, Tax' and continue.
-            # We will grab the sub-list of headers from the sheet starting at 'Bank, Legal, Tax'
-            
-            # Find index of first category
-            first_cat_idx = header_row.index("Bank, Legal, Tax")
-            
-            # Iterate through the sheet headers from there
-            row_cat_values = []
-            for col_idx in range(first_cat_idx, len(header_row)):
-                col_name = header_row[col_idx]
-                if col_name in df.columns:
-                    row_cat_values.append(row[col_name])
-                else:
-                    # If the sheet has a column we don't know about, put 0 or empty?
-                    # Safer to put 0.0 or check if it's a known category
-                    row_cat_values.append(0.0)
-            
-            # Update the category range
-            # We assume the categories in the sheet start at 'Bank, Legal, Tax' and continue.
-            # We will grab the sub-list of headers from the sheet starting at 'Bank, Legal, Tax'
-            
-            # Find index of first category
-            first_cat_idx = header_row.index("Bank, Legal, Tax")
-            
-            # Iterate through the sheet headers from there
-            row_cat_values = []
-            for col_idx in range(first_cat_idx, len(header_row)):
-                col_name = header_row[col_idx]
-                if col_name in df.columns:
-                    # Convert numpy types to python native types for JSON serialization
-                    val = row[col_name]
-                    if hasattr(val, 'item'): 
-                        val = val.item()
-                    row_cat_values.append(val)
-                else:
-                    row_cat_values.append(0.0)
-            
-            # Calculate range A1 notation
-            # gspread uses 1-based indexing
-            # Start col: first_cat_idx (0-based) -> +1
-            start_col_letter = gspread.utils.rowcol_to_a1(current_row, first_cat_idx + 1).replace(str(current_row), "")
-            end_col_letter = gspread.utils.rowcol_to_a1(current_row, len(header_row)).replace(str(current_row), "")
-            
-            range_name = f"{SHEET_NAME}!{start_col_letter}{current_row}:{end_col_letter}{current_row}"
-            
-            console.print(f"   Writing categories to {range_name}")
-            updates.append({
-                'range': range_name,
-                'values': [row_cat_values]
-            })
-            
-            # Date (Col A) is handled automatically by the sheet
-            # date_range = f"{SHEET_NAME}!A{current_row}"
-            # date_val = row['Month']
-            # console.print(f"   Writing Date '{date_val}' to {date_range}")
-            # updates.append({
-            #     'range': date_range,
-            #     'values': [[date_val]]
-            # })
+    # Ensure df Month is datetime for comparison
+    df = df.copy()
+    if not pd.api.types.is_datetime64_any_dtype(df['Month']):
+         df['Month'] = pd.to_datetime(df['Month'])
 
-            current_row += 1
+    for _, row in df.iterrows():
+        month_dt = row['Month']
+        month_str = month_dt.strftime('%b, %y')
+        
+        # Check if month exists
+        # We need to handle potential day differences by normalizing to Month Start if needed, 
+        # but the sheet parsing uses format='%b, %y' which defaults to Day 1.
+        # Our df['Month'] is also typically Day 1.
+        # Let's align on Year-Month comparison just in case.
+        match_dt = None
+        target_row = None
+        
+        for s_dt, s_row in sheet_dates.items():
+            if s_dt.year == month_dt.year and s_dt.month == month_dt.month:
+                match_dt = s_dt
+                target_row = s_row
+                break
+        
+        if match_dt:
+            if not override:
+                console.print(f"[yellow]Skipping {month_str} (already exists in row {target_row}). Use --override to update.[/yellow]")
+                continue
+            else:
+                console.print(f"[bold cyan]Overwriting data for {month_str} at row {target_row}[/bold cyan]")
+        else:
+            # Append to end
+            target_row = len(dates_col) + 1
+            dates_col.append(month_str) # Update local list to prevent overwriting if multiple new rows
             
-        # Execute batch update
-        if updates:
+            # Add Date Update (Column A)
+            updates.append({
+                'range': f"{SHEET_NAME}!A{target_row}",
+                'values': [[month_str]]
+            })
+            console.print(f"[green]Appending new data for {month_str} to row {target_row}[/green]")
+
+        # Prepare Category Values
+        # We match dataframe columns to sheet headers dynamically starting from start_col_idx
+        
+        # Iterate through sheet headers from start_col_idx
+        # This ensures we respect the sheet's column order
+        headers_slice = header_row[start_col_idx:]
+        
+        cat_values = []
+        for col_name in headers_slice:
+            if col_name in row:
+                val = row[col_name]
+                # Convert numpy types to native Python types
+                if hasattr(val, 'item'):
+                    val = val.item()
+                cat_values.append(val)
+            else:
+                # If sheet has a column not in our DF, fill with 0? 
+                # Or keep as empty string to not overwrite formulas if any (unlikely in data section)
+                # But safer to put 0.0 for numeric columns.
+                cat_values.append(0.0)
+                
+        # Calculate A1 notation for the category block
+        start_letter = gspread.utils.rowcol_to_a1(target_row, start_col_idx + 1).replace(str(target_row), "")
+        end_letter = gspread.utils.rowcol_to_a1(target_row, len(header_row)).replace(str(target_row), "")
+        
+        range_name = f"{SHEET_NAME}!{start_letter}{target_row}:{end_letter}{target_row}"
+        
+        # console.print(f"   Writing categories to {range_name}")
+        updates.append({
+            'range': range_name,
+            'values': [cat_values]
+        })
+
+    # 4. Execute Batch Update
+    if updates:
+        try:
             spreadsheet = client.open_by_key(SPREADSHEET_ID)
             body = {
                 'valueInputOption': 'USER_ENTERED',
                 'data': updates
             }
             spreadsheet.values_batch_update(body)
-            console.print(f"[green]Successfully appended {len(df)} rows to Sheet '{SHEET_NAME}'.[/green]")
-        else:
-            console.print("[yellow]No updates prepared.[/yellow]")
-
-    except ValueError as e:
-        console.print(f"[red]Error finding columns: {e}. Check sheet headers.[/red]")
-        # raising so it can be caught in main.py
-        raise
+            # console.print(f"[bold green]Successfully updated Google Sheet![/bold green]")
+        except Exception as e:
+            console.print(f"[bold red]Failed to update sheet: {e}[/bold red]")
+    else:
+        # If we skipped everything because override=False, we should probably clearly say so
+        # handled by per-row logging
+        pass
