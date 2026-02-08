@@ -4,7 +4,7 @@ import os
 from src.data_loader import load_csv
 
 # Use the fake CSV created for E2E tests
-FAKE_CSV_PATH = "tests/fixtures/fake_transactions.csv"
+FAKE_CSV_PATH = os.path.join(os.path.dirname(__file__), "fixtures", "fake_transactions.csv")
 
 def test_load_csv_exists():
     assert os.path.exists(FAKE_CSV_PATH)
