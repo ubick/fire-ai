@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   Upload,
   Flame,
+  PiggyBank,
 } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -32,6 +33,11 @@ const navItems = [
     title: "Import",
     url: "/import",
     icon: Upload,
+  },
+  {
+    title: "Budget",
+    url: "/budget",
+    icon: PiggyBank,
   },
 ]
 

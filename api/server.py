@@ -12,9 +12,11 @@ sys.path.insert(0, str(CLI_DIR))
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict
 import pandas as pd
 import os
+import json
+import time
 
 app = FastAPI(title="FIRE-AI API", version="1.0.0")
 
@@ -31,6 +33,9 @@ app.add_middleware(
 CREDENTIALS_PATH = CLI_DIR / "resources" / "credentials.json"
 CSV_DIR = CLI_DIR / "csv"
 CONFIG_DIR = CLI_DIR / "config"
+CACHE_DIR = CLI_DIR / "cache"
+BUDGET_CACHE_PATH = CACHE_DIR / "budgets.json"
+CACHE_EXPIRY_DAYS = 7
 
 
 class ProcessRequest(BaseModel):
@@ -42,9 +47,117 @@ class ProcessRequest(BaseModel):
     auto_date: bool = False
 
 
+class BudgetData(BaseModel):
+    budgets: Dict[str, float]
+
+
+# ============== Budget Cache Helpers ==============
+
+def get_cached_budgets() -> Dict[str, float] | None:
+    """Load budgets from local cache if valid (not expired)."""
+    if not BUDGET_CACHE_PATH.exists():
+        return None
+    try:
+        with open(BUDGET_CACHE_PATH, 'r') as f:
+            cached = json.load(f)
+        # Check expiry
+        age_days = (time.time() - cached.get('timestamp', 0)) / (24 * 60 * 60)
+        if age_days > CACHE_EXPIRY_DAYS:
+            return None
+        return cached.get('budgets')
+    except Exception:
+        return None
+
+
+def save_budgets_to_cache(budgets: Dict[str, float]) -> None:
+    """Save budgets to local cache with timestamp."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    with open(BUDGET_CACHE_PATH, 'w') as f:
+        json.dump({'budgets': budgets, 'timestamp': time.time()}, f, indent=2)
+
+
+def fetch_budgets_from_sheet() -> Dict[str, float]:
+    """Fetch budgets from Google Sheet row 2."""
+    from src.sheets_client import get_client
+    from src.config import SPREADSHEET_ID, SHEET_NAME
+    
+    client = get_client(str(CREDENTIALS_PATH))
+    sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
+    headers = sheet.row_values(1)
+    budget_row = sheet.row_values(2)
+    
+    budgets = {}
+    for i, header in enumerate(headers):
+        if i < len(budget_row) and header and header != 'Month':
+            val = budget_row[i].replace('£', '').replace(',', '').strip() if budget_row[i] else '0'
+            try:
+                budgets[header] = float(val)
+            except ValueError:
+                budgets[header] = 0.0
+    return budgets
+
+
+def get_budgets() -> Dict[str, float]:
+    """Get budgets: local cache first, then Google Sheet fallback."""
+    cached = get_cached_budgets()
+    if cached:
+        return cached
+    # Fetch from sheet and cache
+    budgets = fetch_budgets_from_sheet()
+    save_budgets_to_cache(budgets)
+    return budgets
+
+
+# ============== Endpoints ==============
+
 @app.get("/api/health")
 def health_check():
     return {"status": "ok"}
+
+
+@app.get("/api/budgets")
+def get_budgets_endpoint():
+    """Get budget data from local cache or Google Sheet."""
+    try:
+        budgets = get_budgets()
+        # Check cache age for display
+        cache_age = None
+        if BUDGET_CACHE_PATH.exists():
+            with open(BUDGET_CACHE_PATH, 'r') as f:
+                cached = json.load(f)
+            age_seconds = time.time() - cached.get('timestamp', 0)
+            age_hours = int(age_seconds / 3600)
+            age_days = int(age_hours / 24)
+            if age_days > 0:
+                cache_age = f"{age_days}d ago"
+            elif age_hours > 0:
+                cache_age = f"{age_hours}h ago"
+            else:
+                cache_age = "just now"
+        return {"budgets": budgets, "cache_age": cache_age}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.put("/api/budgets")
+def update_budgets_endpoint(data: BudgetData):
+    """Save edited budgets to local cache."""
+    try:
+        save_budgets_to_cache(data.budgets)
+        return {"success": True, "message": "Budgets saved to local cache"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/budgets/refresh")
+def refresh_budgets_endpoint():
+    """Force refresh budgets from Google Sheet (overwrites local cache)."""
+    try:
+        budgets = fetch_budgets_from_sheet()
+        save_budgets_to_cache(budgets)
+        return {"success": True, "budgets": budgets, "message": "Budgets refreshed from Google Sheet"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/csv-files")
@@ -117,10 +230,12 @@ def get_analytics():
                     parsed_rows.append(row_data)
         
         if not parsed_rows:
-            return {"months": [], "categories": [], "averages": {}, "monthly_data": []}
+            return {"months": [], "categories": [], "averages": {}, "monthly_data": [], "budgets": {}}
         
-        # Take last 12 months
-        recent_data = parsed_rows[-12:] if len(parsed_rows) > 12 else parsed_rows
+        # Take last 24 months for YoY calculation, but only return last 12 in monthly_data
+        all_months_data = parsed_rows[-24:] if len(parsed_rows) > 24 else parsed_rows
+        recent_data = all_months_data[-12:] if len(all_months_data) > 12 else all_months_data
+        previous_data = all_months_data[:-12] if len(all_months_data) > 12 else []
         
         # Build response
         months = [row["Month"] for row in recent_data]
@@ -149,12 +264,38 @@ def get_analytics():
                 total = sum(row.get(cat, 0) for cat in SHEET_COLUMNS)
                 totals_per_month.append({"month": row["Month"], "total": total})
         
+        # Calculate YoY metrics
+        total_spend_12m = sum(t["total"] for t in totals_per_month)
+        
+        # Previous 12 months totals
+        prev_totals = []
+        for row in previous_data:
+            if "Totals" in row:
+                prev_totals.append(row["Totals"])
+            else:
+                prev_totals.append(sum(row.get(cat, 0) for cat in SHEET_COLUMNS))
+        total_spend_prev_12m = sum(prev_totals) if prev_totals else None
+        
+        yoy_difference = None
+        yoy_percentage = None
+        if total_spend_prev_12m is not None and total_spend_prev_12m > 0:
+            yoy_difference = round(total_spend_12m - total_spend_prev_12m, 2)
+            yoy_percentage = round((yoy_difference / total_spend_prev_12m) * 100, 1)
+        
+        # Get budgets from local cache or sheet
+        budgets = get_budgets()
+        
         return {
             "months": months,
             "categories": SHEET_COLUMNS,
             "averages": category_averages,
             "monthly_data": monthly_data,
-            "totals_per_month": totals_per_month
+            "totals_per_month": totals_per_month,
+            "total_spend_12m": round(total_spend_12m, 2),
+            "total_spend_prev_12m": round(total_spend_prev_12m, 2) if total_spend_prev_12m else None,
+            "yoy_difference": yoy_difference,
+            "yoy_percentage": yoy_percentage,
+            "budgets": budgets
         }
         
     except Exception as e:

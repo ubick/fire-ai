@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
-import { Bar, BarChart, XAxis, YAxis, ResponsiveContainer } from "recharts"
+import { Bar, BarChart, Cell, XAxis, YAxis, ResponsiveContainer, ReferenceLine, LabelList } from "recharts"
 import { Flame, TrendingDown, TrendingUp, Wallet, RefreshCw, Database } from "lucide-react"
 
 interface AnalyticsData {
@@ -12,6 +12,12 @@ interface AnalyticsData {
   categories: string[]
   averages: Record<string, number>
   monthly_data: Array<Record<string, string | number>>
+  totals_per_month: Array<{ month: string, total: number }>
+  total_spend_12m: number | null
+  total_spend_prev_12m: number | null
+  yoy_difference: number | null
+  yoy_percentage: number | null
+  budgets: Record<string, number>
 }
 
 interface CachedData {
@@ -21,7 +27,21 @@ interface CachedData {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 const CACHE_KEY = "fire_ai_analytics"
+const BUDGET_CACHE_KEY = "fire_ai_budgets"
 const CACHE_EXPIRY_DAYS = 7
+
+// Get budgets from localStorage
+function getCachedBudgets(): Record<string, number> | null {
+  if (typeof window === "undefined") return null
+  try {
+    const cached = localStorage.getItem(BUDGET_CACHE_KEY)
+    if (!cached) return null
+    const { budgets } = JSON.parse(cached)
+    return budgets
+  } catch {
+    return null
+  }
+}
 
 function getCachedData(): AnalyticsData | null {
   if (typeof window === "undefined") return null
@@ -112,16 +132,45 @@ export default function Dashboard() {
     }
   }
 
-  // Prepare chart data from averages
+  // Helper to determine budget status color
+  const getBudgetColor = (amount: number, budget: number | undefined) => {
+    if (!budget || budget === 0) return "url(#colorGradient)" // Default orange gradient
+    const ratio = amount / budget
+    if (ratio <= 1) return "url(#greenGradient)"      // Under budget - green
+    if (ratio <= 1.2) return "url(#orangeGradient)"   // Up to 20% over - orange
+    return "url(#redGradient)"                         // More than 20% over - red
+  }
+
+  // Get budgets: localStorage first, then API data fallback
+  const budgets = getCachedBudgets() || data?.budgets || {}
+
+  // Prepare chart data from averages with budget info - top 12 by spend
   const chartData = data?.averages
     ? Object.entries(data.averages)
-      .map(([category, amount]) => ({
-        category: category.length > 12 ? category.substring(0, 12) + "…" : category,
-        fullCategory: category,
-        amount: Number(amount),
-      }))
+      .map(([category, amount]) => {
+        const budget = budgets[category] || 0
+        const remaining = budget > 0 ? budget - Number(amount) : 0
+        const overBudget = budget > 0 && Number(amount) > budget
+        // Create label for budget delta
+        let deltaLabel = ""
+        if (budget > 0) {
+          deltaLabel = overBudget
+            ? `+£${Math.abs(remaining).toFixed(0)}`
+            : `-£${remaining.toFixed(0)}`
+        }
+        return {
+          category: category.length > 12 ? category.substring(0, 12) + "…" : category,
+          fullCategory: category,
+          amount: Number(amount),
+          budget: budget,
+          remaining: remaining,
+          deltaLabel: deltaLabel,
+          overBudget: overBudget,
+          fill: getBudgetColor(Number(amount), budget),
+        }
+      })
       .sort((a, b) => b.amount - a.amount)
-      .slice(0, 10)
+      .slice(0, 12)
     : []
 
   const chartConfig: ChartConfig = {
@@ -227,7 +276,32 @@ export default function Dashboard() {
       {/* Stats Cards - Only show when we have data */}
       {data && (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {/* Total Spend Card */}
+            <Card className="bg-gradient-to-br from-purple-500/10 to-violet-600/10 border-purple-500/20">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Spend (12m)</CardTitle>
+                <Wallet className="h-4 w-4 text-purple-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  £{data.total_spend_12m?.toLocaleString() || "N/A"}
+                </div>
+                {data.yoy_difference != null && data.yoy_percentage != null ? (
+                  <p className={`text-xs font-medium flex items-center gap-1 ${data.yoy_difference <= 0 ? "text-emerald-500" : "text-red-500"}`}>
+                    {data.yoy_difference <= 0 ? (
+                      <TrendingDown className="h-3 w-3" />
+                    ) : (
+                      <TrendingUp className="h-3 w-3" />
+                    )}
+                    YoY {data.yoy_difference >= 0 ? "+" : ""}£{Math.abs(data.yoy_difference).toLocaleString()} ({data.yoy_percentage >= 0 ? "+" : ""}{data.yoy_percentage}%)
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">YoY: N/A (need 24m data)</p>
+                )}
+              </CardContent>
+            </Card>
+
             <Card className="bg-gradient-to-br from-orange-500/10 to-red-600/10 border-orange-500/20">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Avg Monthly Spend</CardTitle>
@@ -253,67 +327,112 @@ export default function Dashboard() {
                 </p>
               </CardContent>
             </Card>
-
-            <Card className="bg-gradient-to-br from-blue-500/10 to-indigo-600/10 border-blue-500/20">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Categories Tracked</CardTitle>
-                <TrendingDown className="h-4 w-4 text-blue-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{data?.categories?.length || 0}</div>
-                <p className="text-xs text-muted-foreground">Expense categories</p>
-              </CardContent>
-            </Card>
           </div>
 
-          {/* Main Chart */}
+          {/* Budget vs Spend Grid */}
           <Card>
             <CardHeader>
-              <CardTitle>Average Spend by Category</CardTitle>
+              <CardTitle>Budget vs Spend</CardTitle>
               <CardDescription>
-                Monthly average over the last {monthsCount} months
+                Monthly average over the last {monthsCount} months • Top 12 categories by spend
               </CardDescription>
             </CardHeader>
             <CardContent>
               {chartData.length === 0 ? (
-                <div className="flex h-[400px] flex-col items-center justify-center gap-4">
+                <div className="flex h-[200px] flex-col items-center justify-center gap-4">
                   <p className="text-muted-foreground">No category data available</p>
                 </div>
               ) : (
-                <ChartContainer config={chartConfig} className="h-[400px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 20 }}>
-                      <XAxis type="number" tickFormatter={(value) => `£${value}`} />
-                      <YAxis
-                        dataKey="category"
-                        type="category"
-                        width={100}
-                        tick={{ fontSize: 12 }}
-                      />
-                      <ChartTooltip
-                        content={
-                          <ChartTooltipContent
-                            formatter={(value, name, props) => [
-                              `£${Number(value).toFixed(2)}`,
-                              props.payload.fullCategory
-                            ]}
-                          />
-                        }
-                      />
-                      <Bar
-                        dataKey="amount"
-                        fill="url(#colorGradient)"
-                        radius={[0, 4, 4, 0]}
-                      />
-                      <defs>
-                        <linearGradient id="colorGradient" x1="0" y1="0" x2="1" y2="0">
-                          <stop offset="0%" stopColor="hsl(25, 95%, 53%)" />
-                          <stop offset="100%" stopColor="hsl(0, 84%, 60%)" />
-                        </linearGradient>
-                      </defs>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {chartData.map((item) => {
+                    const percentage = item.budget > 0
+                      ? (item.amount / item.budget) * 100
+                      : 0
+                    const isOverBudget = item.overBudget
+
+                    // Thresholds: green <100%, peach 100-130%, pink >130%
+                    // Pastel colors with dark text for contrast
+                    const getBadgeStyle = () => {
+                      if (item.budget === 0) return { bg: '#94a3b8', text: '#1e293b' } // slate
+                      if (percentage > 130) return { bg: '#FFADAD', text: '#7f1d1d' } // pastel pink
+                      if (percentage >= 100) return { bg: '#FFD6A5', text: '#78350f' } // pastel peach  
+                      return { bg: '#CAFFBF', text: '#14532d' } // pastel green
+                    }
+                    const badgeStyle = getBadgeStyle()
+
+                    // For split bar calculation
+                    const greenWidth = isOverBudget
+                      ? (item.budget / item.amount) * 100  // Budget portion when over
+                      : percentage  // Normal percentage when under
+                    const redWidth = isOverBudget
+                      ? 100 - greenWidth  // Excess portion
+                      : 0
+
+                    return (
+                      <div
+                        key={item.fullCategory}
+                        className="rounded-lg border bg-card p-4 space-y-3"
+                      >
+                        {/* Header: Category + Status */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium text-sm truncate" title={item.fullCategory}>
+                            {item.fullCategory}
+                          </span>
+                          {item.budget > 0 && (
+                            <span
+                              className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                              style={{ backgroundColor: badgeStyle.bg, color: badgeStyle.text }}
+                            >
+                              {isOverBudget
+                                ? `+£${Math.abs(item.remaining).toFixed(0)}`
+                                : `£${item.remaining.toFixed(0)} left`}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Amounts */}
+                        <div className="flex items-baseline justify-between text-sm">
+                          <span className="text-2xl font-bold">£{item.amount.toFixed(0)}</span>
+                          {item.budget > 0 && (
+                            <span className="text-muted-foreground">
+                              of £{item.budget.toFixed(0)}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Progress bar - split for over budget */}
+                        {item.budget > 0 ? (
+                          <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex">
+                            {isOverBudget ? (
+                              <>
+                                {/* Green portion = budget */}
+                                <div
+                                  className="h-full transition-all"
+                                  style={{ width: `${greenWidth}%`, backgroundColor: '#CAFFBF' }}
+                                />
+                                {/* Pink portion = excess */}
+                                <div
+                                  className="h-full transition-all rounded-r-full"
+                                  style={{ width: `${redWidth}%`, backgroundColor: '#FFADAD' }}
+                                />
+                              </>
+                            ) : (
+                              /* Under budget - single colored bar */
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{ width: `${Math.min(percentage, 100)}%`, backgroundColor: badgeStyle.bg }}
+                              />
+                            )}
+                          </div>
+                        ) : (
+                          <div className="h-2 w-full rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-gray-400 w-0" />
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>
