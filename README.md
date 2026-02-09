@@ -1,13 +1,14 @@
 # 🔥 FIRE AI - Financial Tracker
 
-A personal finance tracking application that categorizes transactions from CSV exports and syncs with Google Sheets, featuring both a modern web dashboard and a CLI.
+A personal finance tracking application that categorizes transactions from CSV exports and syncs with Google Sheets. Features a premium web dashboard optimized with UX best practices, intelligent categorization, and a powerful CLI.
 
 ![Dashboard Preview](docs/images/dashboard-preview.png)
 
 ## ✨ Features
 
 ### Web App
-- **Dashboard**: Visualize monthly spending with interactive charts, YoY comparisons, and 12-month trends.
+- **Premium Dashboard**: Visualize monthly spending with interactive charts, YoY comparisons, and 12-month trends—now optimized with UX best practices for eye comfort.
+- **Representative Icons**: Visual cues for every category for instant scanability.
 - **Budget Management**: Set and track monthly budgets per category directly in the UI.
 - **Local Caching**: Data cached in browser localStorage for instant load times (7-day expiry).
 - **Smart Import**: Auto-date detection for next month's data.
