@@ -134,11 +134,11 @@ export default function Dashboard() {
 
   // Helper to determine budget status color
   const getBudgetColor = (amount: number, budget: number | undefined) => {
-    if (!budget || budget === 0) return "url(#colorGradient)" // Default orange gradient
+    if (!budget || budget === 0) return "url(#defaultGradient)"
     const ratio = amount / budget
-    if (ratio <= 1) return "url(#greenGradient)"      // Under budget - green
-    if (ratio <= 1.2) return "url(#orangeGradient)"   // Up to 20% over - orange
-    return "url(#redGradient)"                         // More than 20% over - red
+    if (ratio <= 1) return "url(#greenGradient)"      // Under budget
+    if (ratio <= 1.2) return "url(#orangeGradient)"   // Near limit
+    return "url(#redGradient)"                         // Over limit
   }
 
   // Get budgets: localStorage first, then API data fallback
@@ -197,12 +197,34 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8">
+      {/* SVG Definitions for Gradients */}
+      <svg width="0" height="0" className="absolute">
+        <defs>
+          <linearGradient id="defaultGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.7 0.1 40)" />
+            <stop offset="100%" stopColor="oklch(0.6 0.15 25)" />
+          </linearGradient>
+          <linearGradient id="greenGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.75 0.1 150)" />
+            <stop offset="100%" stopColor="oklch(0.65 0.15 140)" />
+          </linearGradient>
+          <linearGradient id="orangeGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.8 0.12 60)" />
+            <stop offset="100%" stopColor="oklch(0.7 0.15 45)" />
+          </linearGradient>
+          <linearGradient id="redGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="oklch(0.7 0.15 25)" />
+            <stop offset="100%" stopColor="oklch(0.6 0.2 15)" />
+          </linearGradient>
+        </defs>
+      </svg>
+
       {/* Welcome Header */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-red-600 shadow-lg shadow-orange-500/25">
-              <Flame className="h-7 w-7 text-white" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/15 border border-orange-500/20 shadow-lg shadow-orange-500/5">
+              <Flame className="h-7 w-7 text-orange-500" />
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Welcome to FIRE AI</h1>
@@ -351,12 +373,12 @@ export default function Dashboard() {
                     const isOverBudget = item.overBudget
 
                     // Thresholds: green <100%, peach 100-130%, pink >130%
-                    // Pastel colors with dark text for contrast
+                    // Desaturated colors for better eye comfort in dark mode
                     const getBadgeStyle = () => {
-                      if (item.budget === 0) return { bg: '#94a3b8', text: '#1e293b' } // slate
-                      if (percentage > 130) return { bg: '#FFADAD', text: '#7f1d1d' } // pastel pink
-                      if (percentage >= 100) return { bg: '#FFD6A5', text: '#78350f' } // pastel peach  
-                      return { bg: '#CAFFBF', text: '#14532d' } // pastel green
+                      if (item.budget === 0) return { bg: 'oklch(0.3 0.01 0)', text: 'oklch(0.7 0.01 0)' }
+                      if (percentage > 130) return { bg: 'oklch(0.25 0.1 25 / 0.3)', text: 'oklch(0.75 0.1 25)' }
+                      if (percentage >= 100) return { bg: 'oklch(0.3 0.1 60 / 0.3)', text: 'oklch(0.8 0.1 60)' }
+                      return { bg: 'oklch(0.3 0.1 150 / 0.3)', text: 'oklch(0.8 0.1 150)' }
                     }
                     const badgeStyle = getBadgeStyle()
 
@@ -408,12 +430,12 @@ export default function Dashboard() {
                                 {/* Green portion = budget */}
                                 <div
                                   className="h-full transition-all"
-                                  style={{ width: `${greenWidth}%`, backgroundColor: '#CAFFBF' }}
+                                  style={{ width: `${greenWidth}%`, backgroundColor: 'oklch(0.75 0.1 150)' }}
                                 />
                                 {/* Pink portion = excess */}
                                 <div
                                   className="h-full transition-all rounded-r-full"
-                                  style={{ width: `${redWidth}%`, backgroundColor: '#FFADAD' }}
+                                  style={{ width: `${redWidth}%`, backgroundColor: 'oklch(0.7 0.15 25)' }}
                                 />
                               </>
                             ) : (

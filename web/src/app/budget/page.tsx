@@ -150,8 +150,8 @@ export default function BudgetPage() {
             <div className="space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-3">
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 shadow-lg shadow-emerald-500/25">
-                            <PiggyBank className="h-7 w-7 text-white" />
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-500/20 shadow-lg shadow-emerald-500/5">
+                            <PiggyBank className="h-7 w-7 text-emerald-500" />
                         </div>
                         <div>
                             <h1 className="text-3xl font-bold tracking-tight">Budget Manager</h1>
@@ -190,12 +190,12 @@ export default function BudgetPage() {
 
                 {/* Error/Success messages */}
                 {error && (
-                    <div className="bg-red-500/10 border border-red-500/20 text-red-500 px-4 py-2 rounded-lg">
+                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-2 rounded-lg text-sm">
                         {error}
                     </div>
                 )}
                 {success && (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-4 py-2 rounded-lg">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-2 rounded-lg text-sm">
                         {success}
                     </div>
                 )}

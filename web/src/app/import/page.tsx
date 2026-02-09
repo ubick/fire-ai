@@ -226,7 +226,7 @@ export default function ImportPage() {
                             size="lg"
                             onClick={() => handleProcess("live")}
                             disabled={loading || !selectedCsv}
-                            className="flex-1 h-12 gap-2 text-base font-medium bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 shadow-lg shadow-orange-500/20 transition-all border-none"
+                            className="flex-1 h-12 gap-2 text-base font-medium bg-orange-500/15 text-orange-500 border border-orange-500/20 hover:bg-orange-500/25 shadow-lg shadow-orange-500/5 transition-all"
                         >
                             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5" />}
                             Live Import
