@@ -5,7 +5,55 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Bar, BarChart, Cell, XAxis, YAxis, ResponsiveContainer, ReferenceLine, LabelList } from "recharts"
-import { Flame, TrendingDown, TrendingUp, Wallet, RefreshCw, Database } from "lucide-react"
+import {
+  Flame,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+  RefreshCw,
+  Database,
+  ShoppingBasket,
+  Lightbulb,
+  Gamepad2,
+  Palmtree,
+  Building2,
+  Smartphone,
+  Car,
+  Utensils,
+  Shirt,
+  Ticket,
+  Baby,
+  Activity,
+  Home,
+  PlayCircle,
+  CreditCard,
+  Gift,
+  CircleDollarSign,
+  ArrowLeftRight,
+  Tag
+} from "lucide-react"
+
+// Category to Icon mapping
+const categoryIcons: Record<string, React.ElementType> = {
+  "Groceries": ShoppingBasket,
+  "Utilities": Lightbulb,
+  "Hobbies": Gamepad2,
+  "Holiday": Palmtree,
+  "Bank, Legal, Tax": Building2,
+  "Phone, Net, TV": Smartphone,
+  "Car": Car,
+  "Restaurant": Utensils,
+  "Clothing": Shirt,
+  "Experiences": Ticket,
+  "Kids": Baby,
+  "Personal Care": Activity,
+  "Household": Home,
+  "Subscriptions": PlayCircle,
+  "ATM": CreditCard,
+  "Gifts": Gift,
+  "Income": CircleDollarSign,
+  "Transfers": ArrowLeftRight,
+}
 
 interface AnalyticsData {
   months: string[]
@@ -397,9 +445,15 @@ export default function Dashboard() {
                       >
                         {/* Header: Category + Status */}
                         <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-sm truncate" title={item.fullCategory}>
-                            {item.fullCategory}
-                          </span>
+                          <div className="flex items-center gap-2 min-w-0">
+                            {(() => {
+                              const Icon = categoryIcons[item.fullCategory] || Tag
+                              return <Icon className="h-4 w-4 shrink-0 text-muted-foreground/70" />
+                            })()}
+                            <span className="font-medium text-sm truncate" title={item.fullCategory}>
+                              {item.fullCategory}
+                            </span>
+                          </div>
                           {item.budget > 0 && (
                             <span
                               className="text-xs font-semibold px-2 py-0.5 rounded-full"
