@@ -13,29 +13,71 @@ test.describe('FIRE AI Dashboard', () => {
         await expect(page.getByText('Your financial independence journey starts here')).toBeVisible();
     });
 
+    test('should display dashboard metrics', async ({ page }) => {
+        await page.goto('/');
+
+        // Wait for either the welcome text or the fetch button
+        await expect(page.getByText(/Welcome to FIRE AI/i)).toBeVisible();
+
+        const fetchButton = page.getByRole('button', { name: /Fetch from Google Sheets/i });
+        const statsCard = page.getByText('Total Spend (12m)');
+
+        // If fetch button is there, click it. Otherwise, we might already have data.
+        if (await fetchButton.isVisible()) {
+            await fetchButton.click();
+        }
+
+        // Wait for stats cards to load
+        await expect(statsCard).toBeVisible({ timeout: 20000 });
+
+        // Check if YoY text is visible
+        await expect(page.getByText(/YoY/)).toBeVisible();
+    });
+
     test('should have working sidebar navigation', async ({ page }) => {
         await page.goto('/');
 
-        // Check sidebar has Dashboard and Import links
         await expect(page.getByRole('link', { name: 'Dashboard' })).toBeVisible();
         await expect(page.getByRole('link', { name: 'Import' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'Budget' })).toBeVisible();
 
-        // Click on Import link
         await page.getByRole('link', { name: 'Import' }).click();
-
-        // Verify we're on the import page
         await expect(page.getByRole('heading', { name: 'Import Transactions' })).toBeVisible();
     });
 
-    test('should display import page controls', async ({ page }) => {
+    test('should perform a shadow import flow', async ({ page }) => {
         await page.goto('/import');
 
-        // Wait for page to load
-        await expect(page.getByRole('heading', { name: 'Import Transactions' })).toBeVisible();
+        // 1. Select a file (should be pre-selected or we select one)
+        const fileSelect = page.locator('select').first();
+        await fileSelect.waitFor();
 
-        // Check for action buttons (main functionality)
-        await expect(page.getByRole('button', { name: /Shadow Mode/i })).toBeVisible();
-        await expect(page.getByRole('button', { name: /Live Import/i })).toBeVisible();
+        // 2. Select a month (Auto is default)
+
+        // 3. Click Shadow Mode
+        await page.getByRole('button', { name: /Shadow Mode/i }).click();
+
+        // 4. Wait for results
+        await expect(page.getByText('Shadow mode preview')).toBeVisible({ timeout: 20000 });
+
+        // 5. Check if table appears
+        await expect(page.locator('table')).toBeVisible();
+        await expect(page.getByText('Totals')).toBeVisible();
+    });
+});
+
+test.describe('Budget Page', () => {
+    test('should load and allow saving budgets', async ({ page }) => {
+        await page.goto('/budget');
+
+        await expect(page.getByRole('heading', { name: 'Budget Manager' })).toBeVisible();
+
+        // Save Changes button should be visible (but disabled if no changes)
+        const saveButton = page.getByRole('button', { name: /Save Changes/i });
+        await expect(saveButton).toBeVisible();
+
+        // Check if categories load from mock
+        await expect(page.getByText('Groceries')).toBeVisible({ timeout: 10000 });
     });
 });
 

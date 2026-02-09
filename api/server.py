@@ -76,12 +76,22 @@ def save_budgets_to_cache(budgets: Dict[str, float]) -> None:
         json.dump({'budgets': budgets, 'timestamp': time.time()}, f, indent=2)
 
 
+# ============== Sheets Client Selection ==============
+
+USE_MOCK = os.getenv("FIRE_AI_USE_MOCK", "false").lower() == "true"
+
+if USE_MOCK:
+    import src.mock_sheets_client as sheets_client
+    print("🚀 Running with MOCK Sheets Client")
+else:
+    import src.sheets_client as sheets_client
+
+
 def fetch_budgets_from_sheet() -> Dict[str, float]:
     """Fetch budgets from Google Sheet row 2."""
-    from src.sheets_client import get_client
     from src.config import SPREADSHEET_ID, SHEET_NAME
     
-    client = get_client(str(CREDENTIALS_PATH))
+    client = sheets_client.get_client(str(CREDENTIALS_PATH))
     sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
     headers = sheet.row_values(1)
     budget_row = sheet.row_values(2)
@@ -89,10 +99,13 @@ def fetch_budgets_from_sheet() -> Dict[str, float]:
     budgets = {}
     for i, header in enumerate(headers):
         if i < len(budget_row) and header and header != 'Month':
-            val = budget_row[i].replace('£', '').replace(',', '').strip() if budget_row[i] else '0'
+            # Handle float or string
+            val = budget_row[i]
+            if isinstance(val, str):
+                val = val.replace('£', '').replace(',', '').strip() if val else '0'
             try:
                 budgets[header] = float(val)
-            except ValueError:
+            except (ValueError, TypeError):
                 budgets[header] = 0.0
     return budgets
 
@@ -190,14 +203,13 @@ def list_csv_files():
 def get_analytics():
     """Fetch last 12 months of data from Google Sheets for the dashboard chart."""
     try:
-        from src.sheets_client import get_client
         from src.config import SPREADSHEET_ID, SHEET_NAME, SHEET_COLUMNS
         import re
         
-        if not CREDENTIALS_PATH.exists():
+        if not CREDENTIALS_PATH.exists() and not USE_MOCK:
             raise HTTPException(status_code=500, detail="Credentials file not found")
         
-        client = get_client(str(CREDENTIALS_PATH))
+        client = sheets_client.get_client(str(CREDENTIALS_PATH))
         sheet = client.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
         
         # Get headers and all values
@@ -308,7 +320,6 @@ def process_transactions(request: ProcessRequest):
     try:
         from src.data_loader import load_csv
         from src.processor import categorize_transactions, aggregate_categories
-        from src.sheets_client import update_sheet, get_last_transaction_date
         from src.config import SHEET_COLUMNS
         import datetime
         
@@ -328,8 +339,8 @@ def process_transactions(request: ProcessRequest):
         if request.auto_date:
             # Auto-detect month logic
             try:
-                if CREDENTIALS_PATH.exists():
-                    last_date = get_last_transaction_date(str(CREDENTIALS_PATH))
+                if (CREDENTIALS_PATH.exists() or USE_MOCK):
+                    last_date = sheets_client.get_last_transaction_date(str(CREDENTIALS_PATH))
                     if last_date:
                         next_month = last_date + pd.DateOffset(months=1)
                         target_period = pd.Period(next_month, freq='M')
@@ -399,7 +410,7 @@ def process_transactions(request: ProcessRequest):
             
             cols_to_write = ['Month'] + SHEET_COLUMNS
             df_to_write = aggregated_df[cols_to_write].copy()
-            update_sheet(df_to_write, str(CREDENTIALS_PATH), override=request.override)
+            sheets_client.update_sheet(df_to_write, str(CREDENTIALS_PATH), override=request.override)
             
             return {
                 "success": True,

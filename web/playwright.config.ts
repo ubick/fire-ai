@@ -23,6 +23,9 @@ export default defineConfig({
             url: 'http://localhost:8000/api/health',
             reuseExistingServer: !process.env.CI,
             timeout: 30000,
+            env: {
+                FIRE_AI_USE_MOCK: 'true',
+            },
         },
         {
             command: 'npm run dev',

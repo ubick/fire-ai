@@ -1,0 +1,56 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e5]:
+      - generic [ref=e7]:
+        - img [ref=e9]
+        - generic [ref=e11]: FIRE AI
+      - generic [ref=e13]:
+        - generic [ref=e14]: Navigation
+        - list [ref=e16]:
+          - listitem [ref=e17]:
+            - link "Dashboard" [ref=e18] [cursor=pointer]:
+              - /url: /
+              - img [ref=e19]
+              - generic [ref=e24]: Dashboard
+          - listitem [ref=e25]:
+            - link "Import" [ref=e26] [cursor=pointer]:
+              - /url: /import
+              - img [ref=e27]
+              - generic [ref=e30]: Import
+          - listitem [ref=e31]:
+            - link "Budget" [ref=e32] [cursor=pointer]:
+              - /url: /budget
+              - img [ref=e33]
+              - generic [ref=e36]: Budget
+      - button "Toggle Sidebar" [ref=e37]
+    - main [ref=e38]:
+      - button "Toggle Sidebar" [ref=e40]:
+        - img
+        - generic [ref=e41]: Toggle Sidebar
+      - main [ref=e42]:
+        - generic [ref=e43]:
+          - img
+          - generic [ref=e45]:
+            - generic [ref=e46]:
+              - img [ref=e48]
+              - generic [ref=e50]:
+                - heading "Welcome to FIRE AI" [level=1] [ref=e51]
+                - paragraph [ref=e52]: Your financial independence journey starts here
+            - button "Refresh from Sheets" [ref=e53]:
+              - img
+              - text: Refresh from Sheets
+          - generic [ref=e55]:
+            - img [ref=e57]
+            - generic [ref=e61]:
+              - heading "No cached data available" [level=3] [ref=e62]
+              - paragraph [ref=e63]: Would you like to fetch your financial data from Google Sheets?
+            - button "Fetch from Google Sheets" [ref=e64]:
+              - img
+              - text: Fetch from Google Sheets
+  - button "Open Next.js Dev Tools" [ref=e70] [cursor=pointer]:
+    - img [ref=e71]
+  - alert [ref=e74]
+```

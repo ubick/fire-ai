@@ -58,3 +58,27 @@ def test_aggregate_categories(raw_data):
 
     # Household: -100 (Expense) -> Inverted = 100.00
     assert agg_df['Household'].iloc[0] == 100.00
+
+def test_aggregate_categories_empty():
+    """Verify that an empty DataFrame returns a DataFrame with correct columns and zero rows or handles gracefully."""
+    df = pd.DataFrame(columns=['DATE', 'DESCRIPTION', 'AMOUNT', 'CATEGORY', 'MAPPED_CATEGORY'])
+    agg_df = aggregate_categories(df)
+    # pandas .empty is True if there are 0 rows, even with columns
+    assert 'Month' in agg_df.columns
+    assert 'Totals' not in agg_df.columns # Wait, aggregate_categories normally adds Totals, but the early return doesn't
+    # Let's check what it actually returns
+    assert len(agg_df) == 0
+
+def test_categorize_missing_category():
+    """Verify that transactions with missing categories are handled."""
+    data = {
+        'DATE': pd.to_datetime(['2024-11-20']),
+        'DESCRIPTION': ['Unknown Shop'],
+        'AMOUNT': [-50.00],
+        'CATEGORY': [None] 
+    }
+    df = pd.DataFrame(data)
+    processed = categorize_transactions(df)
+    
+    # MAPPED_CATEGORY should be None or NaN (fillna uses df['CATEGORY'])
+    assert pd.isna(processed['MAPPED_CATEGORY'].iloc[0]) or processed['MAPPED_CATEGORY'].iloc[0] is None

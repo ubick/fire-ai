@@ -11,4 +11,14 @@ if [ ! -f "$VENV_PYTEST" ]; then
     exit 1
 fi
 
+echo "Running CLI Tests..."
 "$VENV_PYTEST" "$SCRIPT_DIR/cli/tests" "$@"
+CLI_EXIT=$?
+
+echo -e "\nRunning API Tests..."
+"$VENV_PYTEST" "$SCRIPT_DIR/api/tests" "$@"
+API_EXIT=$?
+
+if [ $CLI_EXIT -ne 0 ] || [ $API_EXIT -ne 0 ]; then
+    exit 1
+fi
