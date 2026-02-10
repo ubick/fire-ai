@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { useTheme } from "next-themes"
 import { Bar, BarChart, Cell, XAxis, YAxis, ResponsiveContainer, ReferenceLine, LabelList } from "recharts"
 import {
   Flame,
@@ -189,6 +190,10 @@ export default function Dashboard() {
     return "url(#redGradient)"                         // Over limit
   }
 
+  const { theme, resolvedTheme } = useTheme()
+  const currentTheme = theme === "system" ? resolvedTheme : theme
+  const isDark = currentTheme === "dark"
+
   // Get budgets: localStorage first, then API data fallback
   const budgets = getCachedBudgets() || data?.budgets || {}
 
@@ -213,7 +218,6 @@ export default function Dashboard() {
           budget: budget,
           remaining: remaining,
           deltaLabel: deltaLabel,
-          overBudget: overBudget,
           fill: getBudgetColor(Number(amount), budget),
         }
       })
@@ -418,15 +422,27 @@ export default function Dashboard() {
                     const percentage = item.budget > 0
                       ? (item.amount / item.budget) * 100
                       : 0
-                    const isOverBudget = item.overBudget
+                    const isOverBudget = item.amount > item.budget && item.budget > 0
 
-                    // Thresholds: green <100%, peach 100-130%, pink >130%
-                    // Desaturated colors for better eye comfort in dark mode
+                    // Thresholds: green <100%, orange 100-120%, red >120%
                     const getBadgeStyle = () => {
-                      if (item.budget === 0) return { bg: 'oklch(0.3 0.01 0)', text: 'oklch(0.7 0.01 0)' }
-                      if (percentage > 130) return { bg: 'oklch(0.25 0.1 25 / 0.3)', text: 'oklch(0.75 0.1 25)' }
-                      if (percentage >= 100) return { bg: 'oklch(0.3 0.1 60 / 0.3)', text: 'oklch(0.8 0.1 60)' }
-                      return { bg: 'oklch(0.3 0.1 150 / 0.3)', text: 'oklch(0.8 0.1 150)' }
+                      if (item.budget === 0) return { bg: isDark ? 'oklch(0.3 0.01 0)' : 'oklch(0.9 0.01 0)', text: 'var(--muted-foreground)' }
+
+                      if (percentage > 120) {
+                        return isDark
+                          ? { bg: 'oklch(0.25 0.1 25 / 0.4)', text: 'oklch(0.75 0.15 25)' }
+                          : { bg: 'oklch(0.6 0.18 25 / 0.15)', text: 'oklch(0.5 0.18 25)' }
+                      }
+
+                      if (percentage >= 100) {
+                        return isDark
+                          ? { bg: 'oklch(0.3 0.1 60 / 0.4)', text: 'oklch(0.8 0.12 60)' }
+                          : { bg: 'oklch(0.7 0.12 50 / 0.2)', text: 'oklch(0.55 0.15 45)' }
+                      }
+
+                      return isDark
+                        ? { bg: 'oklch(0.3 0.1 150 / 0.4)', text: 'oklch(0.8 0.12 150)' }
+                        : { bg: 'oklch(0.85 0.12 150 / 0.3)', text: 'oklch(0.45 0.12 150)' }
                     }
                     const badgeStyle = getBadgeStyle()
 
